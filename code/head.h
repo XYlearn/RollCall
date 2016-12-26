@@ -47,7 +47,7 @@ Stu stuDataBaseInit(Stu stu, Config *config);   /*为某一节点分配内存（
 void readFromFile(char *filename, Stu stu, Config *config); /*从文件中读取配置*/
 void writeToFile(char *filename, Stu stu, Config *config);  /*写入数据库*/
 void readFromKey(char *filename, Stu stu, Config *config);  /*从键盘读入学生信息*/
-void delStu(char *attrName, char *info, Stu stu, Config *config);   /*从数据库中删除学生（链表操作）*/
+Stu delStu(char *attrName, char *info, Stu stu, Config *config);   /*从数据库中删除学生（链表操作）*/
 Stu findPrevious(Stu head, Stu stu);    /*寻找前一节点（链表操作）*/
 void disposeInfo(Stu stu, Config *config);  /*释放空间*/
 

@@ -6,16 +6,20 @@
 #include <ctype.h>
 #include "head.h"
 
+#define CONFIG_PATH "/home/xy16/CCode.d/RollCall2/config"
+#define DATA_PATH "/home/xy16/CCode.d/RollCall2/stuDataBase"
+
 int main()
 {
     Stu stu = (Stu)malloc(sizeof(StuDataBase));
     Stu head = stu;
     Stu stuTemp=stu;
     Config configure;
+    memset(&configure, 0, sizeof(Config));
     Config *config = &configure;
     /*定义默认文件名*/
-    strncpy(config->fileName, "/home/xy16/CCode.d/RollCall2/config", MAXSTR*2);
-    char fileName[] = "/home/xy16/CCode.d/RollCall2/stuDataBase";
+    strncpy(config->fileName, CONFIG_PATH, MAXSTR*2);
+    char fileName[] = DATA_PATH;
 
     char attrName[MAXSTR];
     char newAttrName[MAXSTR];
@@ -30,13 +34,12 @@ int main()
 
     /*初始化并读入配置文件*/
     readConfig(config);
+    strncpy(config->fileName, CONFIG_PATH, MAXSTR*2);
     syncConfig(fileName,config);
-
     /*首先获取学生数目和属性数量信息*/
     stuNum = config->stuNum;
-
     /*初始化学生数据库*/
-    for(i=0;i<stuNum;i++)
+    for(i=0;i<stuNum && stuTemp;i++)
     {
        stuTemp = stuDataBaseInit(stuTemp, config);
     }
@@ -127,10 +130,12 @@ int main()
                 myfgetsReturn = myfgets(attrName, MAXSTR-1, stdin);
                 if(myfgetsReturn!=NULL && !strcmp(myfgetsReturn, ""))
                     strcpy(attrName,"ID");
-                printf("请输入需要查找的关键字(默认为空)：");
+                printf("请输入需要删除的学生信息(默认为空)：");
                 myfgets(info, MAXSTR-1, stdin);
                 /*删除*/
-                delStu(attrName, info, stu, config);
+                stu = delStu(attrName, info, stu, config);
+                saveConfig(config);
+                writeToFile(fileName, stu, config);
                 break;
             default:
                 printf("不明指令\n");

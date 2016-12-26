@@ -10,6 +10,7 @@
 void readConfig(Config *config)
 {
     FILE *fp;
+    int i;
     char *filename = config->fileName;
     if((fp = fopen(filename, "r")) == NULL)
     {
@@ -19,7 +20,10 @@ void readConfig(Config *config)
             exit(0);
         }
     }
-    fread(config, sizeof(Config), 1, fp);
+    if(!feof(fp))
+        fread(config, sizeof(Config), 1, fp);
+    for(i=0;!feof(fp) && i<MAXATTR;i++)
+        fread(config->attrList, MAXSTR, 1, fp);
     fclose(fp);
     printf("读取配置成功\n");
 }
@@ -28,17 +32,19 @@ void readConfig(Config *config)
 void saveConfig(Config *config)
 {
     FILE *fp;
+    int i;
     fp = fopen(config->fileName, "r");
     if(fp == NULL)
     {
-        if((fp = fopen(config->fileName, "wt+")) == NULL)
+        if((fp = fopen(config->fileName, "w+")) == NULL)
         {
             printf("Cant open config file!\n\a");
             exit(0);
         }
     }
-
     fwrite(config, sizeof(Config), 1, fp);
+    for(i=0;i<MAXATTR;i++)
+        fwrite(config->attrList[i], sizeof(MAXSTR), 1, fp);
 
     fclose(fp);
     printf("成功保存配置\n");
@@ -175,6 +181,8 @@ void writeToFile(char *filename, Stu stu, Config *config)
         fprintf(fp, "%s\t", config->attrList[i]);
     fprintf(fp, "\n");
 
+    if(!stu) return ;   /*若链表为空直接返回*/
+
     /*写入各项信息*/
     for(;stu->next!=NULL;stu=stu->next)
     {
@@ -240,36 +248,57 @@ void readFromKey(char *filename, Stu stu, Config *config)
 }
 
 /*删除学生*/
-void delStu(char *attrName, char *info, Stu stu, Config *config)
+Stu delStu(char *attrName, char *info, Stu stu, Config *config)
 {
     Stu p,previous;
+    Stu head = stu;
     int index;
+    int flag,headFlag=0;
     int stuFound=0;
 
-    index = indexOfAttr(attrName, config);
-    /*判断是否找到属性名*/
-    if(index == -1)
-        return ;
+    if(strcmp(attrName, "ID") && strcmp(attrName, "Name"))
+    {
+        index = indexOfAttr(attrName, config);
+        /*判断是否找到属性名*/
+        if(index == -1)
+            return head;
+    }
+    flag = !strcmp("ID", attrName) ? 0:1;
 
     for(p=stu;p->next!=NULL;p=p->next)
     {
-        if(!strcmp(p->id, info))
+        if((!flag ? (!strcmp(p->id, info)) : (!strcmp(p->name, info) ) ))
         {
             stuFound = 1;
             previous = findPrevious(stu, p);   /*寻找该节点的前一个*/
+            if(previous == NULL)
+            {
+                headFlag = 1;
+                head = head->next;
+                disposeInfo(p, config);
+                config->stuNum--;
+                break;
+            }
+
             previous->next = p->next;   /*将前一个的next指向后一个*/
             p->next = NULL;
-            disposeInfo(p, config); /*释放节点*/
+            disposeInfo(p, config);
+            config->stuNum--; /*释放节点*/
+            break;
         }
     }
 
     if(!stuFound)
-        printf("为找到该学生\n");
+        printf("未找到该学生\n");
+    if(headFlag) return head->next;
+    else return head;
 }
 /*寻找前一节点*/
 Stu findPrevious(Stu head, Stu stu)
 {
-    for(;head->next!=stu && head != NULL;head=head->next);
+    if(head==stu)
+        return NULL;
+    for(;head->next!=stu;head=head->next);
     return head;
 }
 
@@ -277,7 +306,7 @@ Stu findPrevious(Stu head, Stu stu)
 void disposeInfo(Stu stu, Config *config)
 {
     int i;
-    if(stu->next!=NULL)
+    if(stu->next)
     {
         free(stu->next);
         stu->next = NULL;
@@ -295,6 +324,7 @@ void disposeInfo(Stu stu, Config *config)
 void addAttr(char *attrName, Stu stu, Config *config)
 {
     /*最多容纳MAXATTR个属性*/
+    if(!strcmp(attrName, "")) return ;
     if(config->attrNum >= MAXATTR)
     {
         printf("附加属性数量已达到上限%d", MAXATTR);
@@ -463,6 +493,7 @@ void showMenu()
     printf("7.替换属性\n");
     printf("8.填充属性\n");
     printf("9.按学生学号降次排序\n");
+    printf("10.删除学生\n");
     printf("请输入需要执行的功能:\n");
 }
 
@@ -508,8 +539,8 @@ void showData(Stu stu, Config *config)
         for(j=0;j<attrNum;j++)
         {
             /*若属性被锁上则不显示*/
-            if(config->lockedAttr[ATTR_LOCKED][j] ||
-               config->lockedAttr[ATTR_UNSET][j] || !config->lockedAttr[ATTR_SHOW][j])
+            if(config->lockedAttr[ATTR_LOCKED][j]==1 ||
+               config->lockedAttr[ATTR_UNSET][j]==1 || config->lockedAttr[ATTR_SHOW][j]==0)
                 continue;
             else
                 printf("%s\t\t", stu->attr[j]);
