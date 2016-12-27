@@ -56,14 +56,39 @@ void syncConfig(char *fileName,Config *config)
 {
     FILE *fp;
     int lines=0;
+    int attrNum=0;
+    int size;
+    int start=0;    /*属性名起始位置*/
+    int current=0;  /*属性名结束位置*/
     char buff[1000];
 
-    fp = fopen(fileName, "rt");
+    fp = fopen(fileName, "r");
     if(fp == NULL)
     {
-        printf("Fail to Sync!");
-        exit(0);
+        if((fp = fopen(fileName, "w+")) == NULL)
+        {
+            printf("Fail to Sync!");
+            exit(0);
+        }
     }
+    /*读取属性*/
+    fgets(buff, 1000, fp);
+    while(buff[current]!='\n')
+    {
+        if(isspace(buff[current]))
+        {
+            if(attrNum-2>=0)
+            {
+                size = current-start+1;
+                mystrncpy(config->attrList[attrNum-2], buff, size, start);
+                config->attrList[attrNum][size] = '\0';
+            }
+            start = current+1;
+            attrNum++;
+        }
+        current++;
+    }
+    config->attrNum = attrNum-2 >= 0 ? attrNum-2 : 0;
 
     /*读取行数*/
     while(fgets(buff, 1000, fp))
@@ -72,7 +97,7 @@ void syncConfig(char *fileName,Config *config)
         lines++;
     }
     /*更新保存后返回*/
-    config->stuNum=lines-1; /*去除第一行属性列表*/
+    config->stuNum=lines;
     saveConfig(config);
     fclose(fp);
 }
@@ -95,9 +120,9 @@ void setConfig(char *fileName, Config *config)
                     printf("Locked:");
                 else if(j==ATTR_UNSET)
                     printf("Unset:");
-                else if(j==ATTR_SHOW)
-                    printf("Show:");
-                scanf("%d", &config->lockedAttr[i][j]);
+                else if(j==ATTR_UNSHOW)
+                    printf("Unshown:");
+                scanf("%d", &config->lockedAttr[j][i]);
             }
         }
     }
@@ -130,13 +155,13 @@ Stu stuDataBaseInit(Stu stuTemp, Config *config)
 }
 
 /*从文件中读入学生数据*/
-void readFromFile(char *filename, Stu stu, Config *config)
+void readFromFile(char *fileName, Stu stu, Config *config)
 {
     FILE *fp;
     int i;
-    if((fp = fopen(filename, "r")) == NULL)
+    if((fp = fopen(fileName, "r")) == NULL)
     {
-        if((fp = fopen(filename, "w+")) == NULL)
+        if((fp = fopen(fileName, "w+")) == NULL)
         {
             printf("Cant open data base!\n\a");
             exit(0);
@@ -145,17 +170,14 @@ void readFromFile(char *filename, Stu stu, Config *config)
     if(stu==NULL || feof(fp)) return ;
     while(fgetc(fp)!='\n' && !feof(fp)); /*忽略第一行*/
 
-    for(;stu!=NULL;stu=stu->next)
+    for(;stu->next!=NULL;stu=stu->next)
     {
         fscanf(fp, "%s", stu->id);      /*读id*/
         fscanf(fp, "%s", stu->name);    /*读姓名*/
         /*读取未被锁的并且已设置的属性*/
         for(i=0;i<config->attrNum;i++)
         {
-            if(!config->lockedAttr[ATTR_UNSET][i] && !config->lockedAttr[ATTR_LOCKED][i])
-            {
-                fscanf(fp, "%s", stu->attr[i]);
-            }
+            fscanf(fp, "%s", stu->attr[i]);
         }
     }
     fclose(fp);
@@ -190,8 +212,7 @@ void writeToFile(char *filename, Stu stu, Config *config)
         fprintf(fp, "%s\t", stu->name);
         for(i=0;i<config->attrNum;i++)
         {
-            if(!(config->lockedAttr[ATTR_UNSET][i]))
-                fprintf(fp, "%s\t", stu->attr[i]);
+            fprintf(fp, "%s\t", stu->attr[i]);
         }
         fprintf(fp, "\n");
     }
@@ -335,7 +356,7 @@ void addAttr(char *attrName, Stu stu, Config *config)
     /*设置锁的属性*/
     config->lockedAttr[ATTR_UNSET][config->attrNum] = 1;
     config->lockedAttr[ATTR_LOCKED][config->attrNum] = 0;
-    config->lockedAttr[ATTR_SHOW][config->attrNum] = 1;
+    config->lockedAttr[ATTR_UNSHOW][config->attrNum] = 0;
     config->attrNum++;
     saveConfig(config);
 }
@@ -504,14 +525,14 @@ void showAttr(Config *config)
     int i;
     char *lockedStatus[]={"Unlocked", "Locked"};
     char *unsetStatus[]={"Setted", "Unset"};
-    char *showStatus[]={"Hide", "Show"};
+    char *showStatus[]={"Show", "Unshown"};
     printf("1.ID\t2.Name\n");
     for(i=0;i<attrNum;i++)
     {
         printf("%d.%s", i+3, config->attrList[i]);
         printf("(%s %s %s)\n", lockedStatus[config->lockedAttr[ATTR_LOCKED][i]],
                unsetStatus[config->lockedAttr[ATTR_UNSET][i]],
-               showStatus[config->lockedAttr[ATTR_SHOW][i]]);
+               showStatus[config->lockedAttr[ATTR_UNSHOW][i]]);
     }
     printf("\n");
 }
@@ -526,7 +547,7 @@ void showData(Stu stu, Config *config)
     for(j=0;j<attrNum;j++)
     {
         /*若属性被锁上则不显示*/
-        if(config->lockedAttr[ATTR_UNSET][j] == 1 || config->lockedAttr[ATTR_SHOW][j] == 0)
+        if(config->lockedAttr[ATTR_UNSET][j] == 1 || config->lockedAttr[ATTR_UNSHOW][j] == 1)
             continue;
         else
             printf("%s\t\t", config->attrList[j]);
@@ -540,7 +561,7 @@ void showData(Stu stu, Config *config)
         {
             /*若属性被锁上则不显示*/
             if(config->lockedAttr[ATTR_LOCKED][j]==1 ||
-               config->lockedAttr[ATTR_UNSET][j]==1 || config->lockedAttr[ATTR_SHOW][j]==0)
+               config->lockedAttr[ATTR_UNSET][j]==1 || config->lockedAttr[ATTR_UNSHOW][j]==1)
                 continue;
             else
                 printf("%s\t\t", stu->attr[j]);
@@ -609,4 +630,9 @@ char *myfgets(char *buff, int n, FILE *fp)
     else
         while(getchar() != '\n');
     return returnPoint;
+}
+/*定义一个可以部分复制字符串的函数*/
+char *mystrncpy(char *dest, char *src, size_t n, int start)
+{
+    return strncpy(dest, src+start, n);
 }

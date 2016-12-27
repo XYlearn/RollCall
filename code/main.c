@@ -34,7 +34,7 @@ int main()
 
     /*初始化并读入配置文件*/
     readConfig(config);
-    strncpy(config->fileName, CONFIG_PATH, MAXSTR*2);
+    strncpy(config->fileName, CONFIG_PATH, MAXSTR*3);
     syncConfig(fileName,config);
     /*首先获取学生数目和属性数量信息*/
     stuNum = config->stuNum;
@@ -99,14 +99,14 @@ int main()
             case 7:
                 printf("请输入要替换的属性名：");
                 myfgets(attrName, MAXSTR, stdin);
-                printf("请输入新的属性名");
+                printf("请输入新的属性名：");
                 myfgets(newAttrName, MAXSTR, stdin);
                 replaceAttr(attrName, newAttrName,fileName, stu, config);
                 printf("是否立刻填充属性？(y/n) \n");
                 if(tolower(getchar()) == 'y')
                 {
                     getchar();
-                    fillAttr(attrName, stu, config);
+                    fillAttr(newAttrName, stu, config);
                     writeToFile(fileName, stu, config);
                 }
                 break;

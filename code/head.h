@@ -5,7 +5,7 @@
 
 #define ATTR_LOCKED 0
 #define ATTR_UNSET 1
-#define ATTR_SHOW 2
+#define ATTR_UNSHOW 2
 #define LOCKNUM 3
 #define MAXSTR 31
 #define MAXATTR 10
@@ -27,7 +27,7 @@ typedef StuDataBase *Stu;
 /*配置文件结构*/
 typedef struct Config
 {
-    char fileName[MAXSTR*2];
+    char fileName[MAXSTR*3];
     char attrList[MAXATTR][MAXSTR];
     int attrNum;
     int lockedAttr[LOCKNUM][MAXATTR];
@@ -70,6 +70,7 @@ void quickSort(Stu pBegin, Stu pEnd);   /*快速排序*/
 Stu getPartion(Stu pBegin, Stu pEnd);   /*快排获取分割点*/
 void swapStu(Stu stu1, Stu stu2);   /*交换学生信息*/
 
-/*自定义读取输入流函数*/
+/*自定义拓展标准函数*/
 char *myfgets(char *buff, int n, FILE *fp);
+char *mystrncpy(char *dest, char *src, size_t n, int start);
 #endif
